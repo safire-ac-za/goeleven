@@ -1,8 +1,8 @@
 package main
 
 /*
-    /(sign|encrypt|decrypt)/<slot label>/<key label/
-    Post data:
+	/(sign|encrypt|decrypt)/<slot label>/<key label/
+	Post data:
 		Data      string `json:"data"`
 		Mech      string `json:"mech"`   // using pkscs11 names: signing: CKM_SHA1_RSA_PKCS, CKM_SHA256_RSA_PKCS, CKM_RSA_PKCS(prehashed) decrypting: CKM_RSA_PKCS_OAEP
 		Digest    string `json:"digest"  // using pkcs11 names: CKM_SHA_1, CKM_SHA256 - only used for decrypting
@@ -55,7 +55,7 @@ var (
 	maxsessions   int
 	p             *pkcs11.Ctx
 	sem           chan Hsm
-    slot uint
+	slot uint
 
 
 	config = map[string]string{
@@ -73,10 +73,10 @@ var (
 		"GOELEVEN_HTTPS_CERT":    "false",
 	}
 
-    usertype = map[string]uint{
-        "crypto_officer":  pkcs11.CKU_USER, // safenet crypto_officer maps to CKU.USER !!!
-        "crypto_user":  0x8000001, // safenet extension
-    }
+	usertype = map[string]uint{
+		"crypto_officer":  pkcs11.CKU_USER, // safenet crypto_officer maps to CKU.USER !!!
+		"crypto_user":  0x8000001, // safenet extension
+	}
 
 	methods = map[string]uint{
 		"CKM_SHA1_RSA_PKCS":   pkcs11.CKM_SHA1_RSA_PKCS,
@@ -105,8 +105,8 @@ var (
 	src = rand.NewSource(time.Now().UnixNano())
 
 	fatalerrors = map[uint]bool{
-    	pkcs11.CKR_DEVICE_ERROR: true,
-    	pkcs11.CKR_KEY_HANDLE_INVALID: true,
+		pkcs11.CKR_DEVICE_ERROR: true,
+		pkcs11.CKR_KEY_HANDLE_INVALID: true,
 	}
 )
 
@@ -131,8 +131,8 @@ func main() {
 
 	p = pkcs11.New(config["GOELEVEN_HSMLIB"])
 
-    // sem must not be nil as this will block forever all clients that tries to read before
-    // clients are made available in sem asyncroniously as they become ready in initpkcs11lib
+	// sem must not be nil as this will block forever all clients that tries to read before
+	// clients are made available in sem asyncroniously as they become ready in initpkcs11lib
 	sem = make(chan Hsm, maxsessions)
 
 	bginit()
@@ -229,14 +229,14 @@ func prepareobjects(labels string) (err error) {
 		log.Fatalf("slots %s\n", e.Error())
 	}
 
-    for _, s := range slots {
-        tokeninfo, _ := p.GetTokenInfo(s)
-        if (tokeninfo.SerialNumber == config["GOELEVEN_SERIALNUMBER"] || tokeninfo.Label == config["GOELEVEN_SERIALNUMBER"]) { // tokeninfo.SerialNumber is string
-            slot = s;
+	for _, s := range slots {
+		tokeninfo, _ := p.GetTokenInfo(s)
+		if (tokeninfo.SerialNumber == config["GOELEVEN_SERIALNUMBER"] || tokeninfo.Label == config["GOELEVEN_SERIALNUMBER"]) { // tokeninfo.SerialNumber is string
+			slot = s;
 	        log.Printf("slot: %d %s\n", slot, tokeninfo.Label)
-            break
-        }
-    }
+			break
+		}
+	}
 
 	s, err = initsession()
 	if err != nil {
@@ -247,7 +247,7 @@ func prepareobjects(labels string) (err error) {
 
 	keys := strings.Split(labels, ",")
 
-    keylabels := []string{}
+	keylabels := []string{}
 	for _, v := range keys {
 
 		parts := strings.Split(v, ":")
@@ -350,16 +350,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	body, _ := ioutil.ReadAll(r.Body)
 
-    b := request{}
+	b := request{}
 
 	err = json.Unmarshal(body, &b)
 	if err != nil {
 		logandsenderror(w, fmt.Sprintf("json.unmarshall: %v", err.Error()), ctx)
 		return
 	}
-    log.Printf("req: %v\n", b);
+	log.Printf("req: %v\n", b);
 
-    data, err := base64.StdEncoding.DecodeString(b.Data)
+	data, err := base64.StdEncoding.DecodeString(b.Data)
 
 	if err != nil {
 		logandsenderror(w, fmt.Sprintf("DecodeString: %v", err.Error()), ctx)
@@ -442,13 +442,13 @@ func RandStringBytesMaskImprSrc(n int) []byte {
 func initpkcs11lib() {
 	err := p.Initialize()
 	for err != nil {
-        log.Fatal("Failed to initialize pkcs11")
+		log.Fatal("Failed to initialize pkcs11")
 	}
 
 	for currentsessions := 0; currentsessions < maxsessions; currentsessions++ {
 		s, _ := initsession()
-        // need to call FindObjectsInit to be able to use objects in ha partition
-    	template := []*pkcs11.Attribute{}
+		// need to call FindObjectsInit to be able to use objects in ha partition
+		template := []*pkcs11.Attribute{}
 	    _ = p.FindObjectsInit(s.session, template)
 		sem <- s
 	}
@@ -484,22 +484,22 @@ func sign(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error) {
 	defer func() {sem <- s}()
 
 	err = p.SignInit(s.session, []*pkcs11.Mechanism{pkcs11.NewMechanism(methods[parms.Mech], nil)}, key)
-    handlefatalerror(err)
+	handlefatalerror(err)
 	sig, err := p.Sign(s.session, data)
-    handlefatalerror(err)
+	handlefatalerror(err)
 
 	return sig, err
 }
 
 func encrypt(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error) {
 
-    type oaepParams struct {
-        hashAlg uint
-        mgf uint
-        source uint
-        pSourceData *byte
-        ulSourceDataLen uint
-    }
+	type oaepParams struct {
+		hashAlg uint
+		mgf uint
+		source uint
+		pSourceData *byte
+		ulSourceDataLen uint
+	}
 
 	buf := make([]byte, int(unsafe.Sizeof(oaepParams{})))
 	params := (*oaepParams)(unsafe.Pointer(&buf[0]))
@@ -515,9 +515,9 @@ func encrypt(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error
 	defer func() {sem <- s}()
 
 	err = p.EncryptInit(s.session, []*pkcs11.Mechanism{pkcs11.NewMechanism(methods[parms.Mech], buf)}, key)
-    handlefatalerror(err)
+	handlefatalerror(err)
 	plain, err := p.Encrypt(s.session, data)
-    handlefatalerror(err)
+	handlefatalerror(err)
 
 	return plain, err
 }
@@ -527,13 +527,13 @@ func encrypt(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error
 
 func decrypt(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error) {
 
-    type oaepParams struct {
-        hashAlg uint
-        mgf uint
-        source uint
-        pSourceData *byte
-        ulSourceDataLen uint
-    }
+	type oaepParams struct {
+		hashAlg uint
+		mgf uint
+		source uint
+		pSourceData *byte
+		ulSourceDataLen uint
+	}
 
 	buf := make([]byte, int(unsafe.Sizeof(oaepParams{})))
 	params := (*oaepParams)(unsafe.Pointer(&buf[0]))
@@ -549,14 +549,14 @@ func decrypt(data []byte, parms request, key pkcs11.ObjectHandle) ([]byte, error
 	defer func() {sem <- s}()
 
 	err = p.DecryptInit(s.session, []*pkcs11.Mechanism{pkcs11.NewMechanism(methods[parms.Mech], buf)}, key)
-    handlefatalerror(err)
+	handlefatalerror(err)
 	plain, err := p.Decrypt(s.session, data)
-    handlefatalerror(err)
+	handlefatalerror(err)
 	return plain, err
 	}
 
 func handlefatalerror(err error) {
-    if err != nil && fatalerrors[uint(err.(pkcs11.Error))] {
+	if err != nil && fatalerrors[uint(err.(pkcs11.Error))] {
 		log.Fatalf("goeleven FATAL error: %s\n", err.Error())
-    }
+	}
 }
