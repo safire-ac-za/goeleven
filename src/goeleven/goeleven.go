@@ -445,12 +445,36 @@ func initpkcs11lib() {
 		log.Fatal("Failed to initialize pkcs11")
 	}
 
-	for currentsessions := 0; currentsessions < maxsessions; currentsessions++ {
+	if maxsessions == 1 {
+		// when using OpenSC we need to re-cache the key handles every time we start a session
 		s, _ := initsession()
-		// need to call FindObjectsInit to be able to use objects in ha partition
-		template := []*pkcs11.Attribute{}
-	    _ = p.FindObjectsInit(s.session, template)
+		keys := strings.Split(config["GOELEVEN_KEY_LABEL"], ",")
+		for _, v := range keys {
+			parts := strings.Split(v, ":")
+			label := parts[0]
+			sharedsecret := parts[1]
+			template := []*pkcs11.Attribute{pkcs11.NewAttribute(pkcs11.CKA_LABEL, label), pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY)}
+			if err = p.FindObjectsInit(s.session, template); err == nil {
+				obj, b, e := p.FindObjects(s.session, 2)
+				if e != nil {
+					log.Fatalf("Failed to find: %s %v\n", e.Error(), b)
+				}
+				if e := p.FindObjectsFinal(s.session); e != nil {
+					log.Fatalf("Failed to finalize: %s\n", e.Error())
+				}
+				log.Printf("(re-)found key: %d %s\n", obj[0], label)
+				keymap[label] = aclmap{obj[0], sharedsecret, label}
+			}
+		}
 		sem <- s
+	} else {
+		for currentsessions := 0; currentsessions < maxsessions; currentsessions++ {
+			s, _ := initsession()
+			// need to call FindObjectsInit to be able to use objects in ha partition
+			template := []*pkcs11.Attribute{}
+			_ = p.FindObjectsInit(s.session, template)
+			sem <- s
+		}
 	}
 
 	log.Printf("initialized lib\n")
