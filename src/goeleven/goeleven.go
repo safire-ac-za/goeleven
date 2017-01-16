@@ -71,6 +71,7 @@ var (
 		"SOFTHSM_CONF":           "softhsm.conf",
 		"GOELEVEN_HTTPS_KEY":     "false",
 		"GOELEVEN_HTTPS_CERT":    "false",
+		"GOELEVEN_STATUS_KEY":    "wildcard.test.lan.key",
 	}
 
 	usertype = map[string]uint{
@@ -413,7 +414,7 @@ func statushandler(w http.ResponseWriter, r *http.Request) {
 	data := []byte{0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20}
 	data = append(data, RandStringBytesMaskImprSrc(40)...)
 	b := request{Mech: "CKM_RSA_PKCS"}
-	_, err := sign(data, b, keymap["wildcard.test.lan.key"].handle)
+	_, err := sign(data, b, keymap[config["GOELEVEN_STATUS_KEY"]].handle)
 	if err != nil {
 		logandsenderror(w, fmt.Sprintf("signing error: %s", err.Error()), ctx)
 		return
